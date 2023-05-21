@@ -5,6 +5,8 @@ use App\Models\Mahasiswa;
 use Illuminate\Http\Request;
 use App\Models\Mahasiswa_MataKuliah;
 use App\Models\Kelas;
+use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facades\PDF;
 
 class MahasiswaController extends Controller
 {
@@ -46,7 +48,7 @@ class MahasiswaController extends Controller
      */
     public function store(Request $request)
     {
-            //melakukan validasi data   
+        //melakukan validasi data   
         $request->validate([
         'Nim' => 'required',
         'Nama' => 'required',
@@ -62,10 +64,13 @@ class MahasiswaController extends Controller
         // return redirect()->route('mahasiswas.index') ->with('success', 'Mahasiswa Berhasil Ditambahkan');
 
         //fungsi eloquent untuk menambah data
-
+        if ($request->file('image')){
+            $image_name = $request->file('image')->store('images', 'public');
+        }
         $mahasiswas= new Mahasiswa;
         $mahasiswas->Nim=$request->get('Nim');
         $mahasiswas->Nama=$request->get('Nama');
+        $mahasiswas->featured_image=$image_name;
         $mahasiswas->Jurusan=$request->get('Jurusan');
         $mahasiswas->No_Handphone=$request->get('No_Handphone');
         $mahasiswas->Email=$request->get('Email');
@@ -132,6 +137,12 @@ class MahasiswaController extends Controller
         'Email' => 'required',
         'TanggalLahir' => 'required',
     ]);
+
+    $Mahasiswa = Mahasiswa::find($Nim);
+        if ($Mahasiswa->featured_image && file_exists(storage_path('app/public/' . $Mahasiswa->featured_image))){
+            Storage::delete('public/' . $Mahasiswa->featured_image);
+    }    
+
     $Mahasiswa = Mahasiswa::find($Nim);
         $mahasiswas = Mahasiswa::with('Kelas')->where('Nim', $Nim)->first();
         $mahasiswas->Nim = $request->get('Nim');
@@ -177,5 +188,12 @@ class MahasiswaController extends Controller
         $mahasiswa = Mahasiswa::find($Nim);
 
         return view('mahasiswas.khs', compact('mahasiswa'));
+    }
+
+    public function cetak_khs($Nim){
+        $mahasiswa = Mahasiswa::find($Nim);
+
+        $pdf = PDF::loadview('mahasiswas.cetakKHS',['mahasiswa'=>$mahasiswa]);
+        return $pdf->stream();
     }
 }
